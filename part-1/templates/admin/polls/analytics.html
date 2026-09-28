@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Poll Analytics{% endblock %}
+
+{% block content %}
+<h1>Poll Analytics</h1>
+<p style="color:#888; margin-bottom:32px;">Showing analytics for all your polls. Only you can see this.</p>
+
+{% if analytics_data %}
+    {% for item in analytics_data %}
+    <div class="module" style="margin-bottom:40px; padding:20px;">
+        <h2 style="margin-bottom:4px;">{{ item.question.question_text }}</h2>
+        <p style="color:#888; font-size:12px; margin-bottom:16px;">
+            Published: {{ item.question.pub_date|date:"N j, Y, P" }} &nbsp;|&nbsp;
+            Total votes: <strong>{{ item.total_votes }}</strong>
+        </p>
+
+        {% if item.vote_details %}
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr style="background:#f2f2f2;">
+                    <th style="text-align:left; padding:8px 12px; border-bottom:2px solid #ccc;">Choice</th>
+                    <th style="text-align:center; padding:8px 12px; border-bottom:2px solid #ccc;">Votes</th>
+                    <th style="text-align:center; padding:8px 12px; border-bottom:2px solid #ccc;">Share</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for detail in item.vote_details %}
+                <tr>
+                    <td style="padding:8px 12px; border-bottom:1px solid #eee;">{{ detail.choice_text }}</td>
+                    <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; font-weight:bold;">{{ detail.count }}</td>
+                    <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; color:#2e7d32;">{{ detail.percent }}%</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:#aaa; font-style:italic;">No choices added to this poll yet.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <p style="color:#aaa; font-style:italic;">You haven't created any polls yet. Go to <a href="../question/add/">Questions</a> to create one.</p>
+{% endif %}
+{% endblock %}

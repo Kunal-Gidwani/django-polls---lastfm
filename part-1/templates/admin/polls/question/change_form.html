@@ -1,0 +1,35 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if vote_details is not None %}
+<div class="module" style="margin-top:24px; padding:16px;">
+    <h2 style="margin-bottom:4px;">Vote Analytics</h2>
+    <p style="color:#888; font-size:12px; margin-bottom:16px;">Total votes: <strong>{{ total_votes }}</strong></p>
+
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead>
+            <tr style="background:#f2f2f2;">
+                <th style="text-align:left; padding:8px 12px; border-bottom:2px solid #ccc;">Choice</th>
+                <th style="text-align:center; padding:8px 12px; border-bottom:2px solid #ccc;">Votes</th>
+                <th style="text-align:center; padding:8px 12px; border-bottom:2px solid #ccc;">Share</th>
+                <th style="text-align:left; padding:8px 12px; border-bottom:2px solid #ccc;">Voters</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for detail in vote_details %}
+            <tr>
+                <td style="padding:8px 12px; border-bottom:1px solid #eee;">{{ detail.choice_text }}</td>
+                <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; font-weight:bold;">{{ detail.count }}</td>
+                <td style="padding:8px 12px; border-bottom:1px solid #eee; text-align:center; color:#2e7d32;">{{ detail.percent }}%</td>
+                <td style="padding:8px 12px; border-bottom:1px solid #eee; color:#555;">
+                    {% if detail.voters %}{{ detail.voters|join:", " }}{% else %}<em style="color:#bbb;">—</em>{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
