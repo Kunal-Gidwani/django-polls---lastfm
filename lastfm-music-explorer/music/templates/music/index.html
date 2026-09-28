@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Last.fm Explorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f7f7f7;
+      color: #222;
+      padding: 28px 20px;
+    }
+
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #111; }
+
+    .section {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+
+    .section h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 3px; }
+
+    label { font-size: 11px; color: #888; }
+
+    input[type="text"] {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 6px 10px;
+      font-size: 13px;
+      outline: none;
+      width: 190px;
+    }
+    input[type="text"].narrow { width: 65px; }
+    input[type="text"]:focus { border-color: #666; }
+
+    button {
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 7px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: #333; }
+
+    .boxes {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .box-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .box-label {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .box {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background: #fafafa;
+      min-height: 56px;
+      max-height: 280px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .box .placeholder { color: #bbb; padding: 10px 12px; display: block; }
+    .box .error-msg   { color: #c0392b; padding: 10px 12px; display: block; }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: default;
+    }
+    .item:last-child { border-bottom: none; }
+    .item.clickable { cursor: pointer; }
+    .item.clickable:hover { background: #f5f5f5; }
+
+    .item-name { font-weight: 500; }
+    .item-sub  { font-size: 12px; color: #999; margin-top: 1px; }
+    .item-right{ font-size: 12px; color: #888; text-align: right; white-space: nowrap; margin-left: 8px; }
+
+    .hint { font-size: 11px; color: #bbb; margin-bottom: 6px; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #888;
+    }
+    .pager button {
+      background: #eee;
+      color: #333;
+      padding: 3px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+    .pager button:hover { background: #ddd; }
+    .pager button:disabled { opacity: .35; cursor: default; }
+  </style>
+</head>
+<body>
+
+<h1>Last.fm Explorer</h1>
+
+<div class="section">
+  <h2>Top Artists by Country</h2>
+  <div class="controls">
+    <div class="field">
+      <label>Country (required, min 3 chars for suggestions)</label>
+      <input id="ta-country" type="text" placeholder="e.g. United States"
+             oninput="suggestCountry('ta-country','ta-sug')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="ta-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchTopArtists()">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Country suggestions</div>
+      <div class="box" id="ta-sug"><span class="placeholder">Type 3+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Output — top 20 artists</div>
+      <div class="box" id="ta-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="ta-pager" style="display:none">
+        <button onclick="pageStep('ta',-1)">‹ Prev</button>
+        <span id="ta-pageinfo"></span>
+        <button onclick="pageStep('ta',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Top Tracks by Country</h2>
+  <div class="controls">
+    <div class="field">
+      <label>Country (required, min 3 chars for suggestions)</label>
+      <input id="tt-country" type="text" placeholder="e.g. United Kingdom"
+             oninput="suggestCountry('tt-country','tt-sug')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="tt-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchTopTracks()">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Country suggestions</div>
+      <div class="box" id="tt-sug"><span class="placeholder">Type 3+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Output — top 20 tracks</div>
+      <div class="box" id="tt-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="tt-pager" style="display:none">
+        <button onclick="pageStep('tt',-1)">‹ Prev</button>
+        <span id="tt-pageinfo"></span>
+        <button onclick="pageStep('tt',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Search Artists</h2>
+  <div class="hint">Type 4+ characters — suggestions appear live. Click Fetch to load full results.</div>
+  <div class="controls">
+    <div class="field">
+      <label>Artist name (min 4 chars)</label>
+      <input id="sa-q" type="text" placeholder="e.g. coldplay"
+             oninput="liveSearch('sa','artist')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="sa-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchSearch('sa','artist')">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Suggestions (live)</div>
+      <div class="box" id="sa-sug"><span class="placeholder">Type 4+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Output — 20 results</div>
+      <div class="box" id="sa-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="sa-pager" style="display:none">
+        <button onclick="pageStep('sa',-1)">‹ Prev</button>
+        <span id="sa-pageinfo"></span>
+        <button onclick="pageStep('sa',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Search Albums</h2>
+  <div class="hint">Type 4+ characters — suggestions appear live. Click Fetch to load full results.</div>
+  <div class="controls">
+    <div class="field">
+      <label>Album name (min 4 chars)</label>
+      <input id="sab-q" type="text" placeholder="e.g. dark side"
+             oninput="liveSearch('sab','album')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="sab-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchSearch('sab','album')">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Suggestions (live)</div>
+      <div class="box" id="sab-sug"><span class="placeholder">Type 4+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Output — 20 results</div>
+      <div class="box" id="sab-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="sab-pager" style="display:none">
+        <button onclick="pageStep('sab',-1)">‹ Prev</button>
+        <span id="sab-pageinfo"></span>
+        <button onclick="pageStep('sab',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Search Tracks</h2>
+  <div class="hint">Type 4+ characters — suggestions appear live. Click Fetch to load full results.</div>
+  <div class="controls">
+    <div class="field">
+      <label>Track name (min 4 chars)</label>
+      <input id="st-q" type="text" placeholder="e.g. bohemian rhapsody"
+             oninput="liveSearch('st','track')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="st-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchSearch('st','track')">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Suggestions (live)</div>
+      <div class="box" id="st-sug"><span class="placeholder">Type 4+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Output — 20 results</div>
+      <div class="box" id="st-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="st-pager" style="display:none">
+        <button onclick="pageStep('st',-1)">‹ Prev</button>
+        <span id="st-pageinfo"></span>
+        <button onclick="pageStep('st',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Top Artists by Genre</h2>
+  <div class="hint">e.g. rock · pop · hip-hop · jazz · electronic · indie · metal · r&amp;b · classical · folk</div>
+  <div class="controls">
+    <div class="field">
+      <label>Genre (required, min 3 chars for suggestions)</label>
+      <input id="ga-genre" type="text" placeholder="e.g. rock"
+             oninput="suggestGenre('ga-genre','ga-gsug')" />
+    </div>
+    <div class="field">
+      <label>Country (optional)</label>
+      <input id="ga-country" type="text" placeholder="e.g. United States"
+             oninput="suggestCountry('ga-country','ga-csug')" />
+    </div>
+    <div class="field">
+      <label>Page</label>
+      <input id="ga-page" class="narrow" type="text" placeholder="1" />
+    </div>
+    <button onclick="fetchGenreArtists()">Fetch</button>
+  </div>
+  <div class="boxes">
+    <div class="box-wrap">
+      <div class="box-label">Genre suggestions</div>
+      <div class="box" id="ga-gsug"><span class="placeholder">Type 3+ chars…</span></div>
+    </div>
+    <div class="box-wrap">
+      <div class="box-label">Country suggestions</div>
+      <div class="box" id="ga-csug"><span class="placeholder">Type 3+ chars…</span></div>
+    </div>
+  </div>
+  <div class="boxes" style="margin-top:10px">
+    <div class="box-wrap" style="flex:2">
+      <div class="box-label">Output — 10 artists</div>
+      <div class="box" id="ga-out"><span class="placeholder">Click Fetch to load…</span></div>
+      <div class="pager" id="ga-pager" style="display:none">
+        <button onclick="pageStep('ga',-1)">‹ Prev</button>
+        <span id="ga-pageinfo"></span>
+        <button onclick="pageStep('ga',1)">Next ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const COUNTRIES = [
+  "Afghanistan","Albania","Algeria","Argentina","Armenia","Australia","Austria",
+  "Azerbaijan","Bangladesh","Belarus","Belgium","Bolivia","Bosnia and Herzegovina",
+  "Brazil","Bulgaria","Cambodia","Canada","Chile","China","Colombia","Costa Rica",
+  "Croatia","Cuba","Cyprus","Czech Republic","Denmark","Ecuador","Egypt",
+  "El Salvador","Estonia","Ethiopia","Finland","France","Georgia","Germany",
+  "Ghana","Greece","Guatemala","Honduras","Hungary","India","Indonesia","Iran",
+  "Iraq","Ireland","Israel","Italy","Jamaica","Japan","Jordan","Kazakhstan",
+  "Kenya","Latvia","Lebanon","Libya","Lithuania","Luxembourg","Malaysia","Mexico",
+  "Moldova","Morocco","Netherlands","New Zealand","Nicaragua","Nigeria","Norway",
+  "Pakistan","Panama","Paraguay","Peru","Philippines","Poland","Portugal",
+  "Romania","Russia","Saudi Arabia","Serbia","Singapore","Slovakia","Slovenia",
+  "South Africa","South Korea","Spain","Sri Lanka","Sweden","Switzerland",
+  "Syria","Taiwan","Thailand","Trinidad and Tobago","Tunisia","Turkey",
+  "Ukraine","United Arab Emirates","United Kingdom","United States",
+  "Uruguay","Venezuela","Vietnam"
+];
+
+const GENRES = [
+  "rock","pop","hip-hop","jazz","classical","electronic","indie","metal",
+  "r&b","soul","blues","country","folk","punk","alternative","dance",
+  "reggae","ambient","house","techno","trance","gospel","latin","funk",
+  "disco","emo","grunge","trap","lo-fi","k-pop","j-pop","indie rock",
+  "indie pop","post-rock","shoegaze","hard rock","heavy metal","death metal",
+  "black metal","progressive rock","new wave","synthpop","post-punk",
+  "psychedelic","experimental","singer-songwriter","acoustic","chill",
+  "workout","party","80s","90s","2000s","classic rock","art rock",
+  "britpop","dream pop","noise rock","glitch","drum and bass","dubstep"
+];
+
+const _state = {}; // key → { page, totalPages, query/country/genre, type }
+const _timers = {};
+
+function $id(id) { return document.getElementById(id); }
+
+function setBox(id, html) { $id(id).innerHTML = html; }
+
+function loading(id) { setBox(id, '<span class="placeholder">Loading…</span>'); }
+
+function err(id, msg) { setBox(id, `<span class="error-msg">${msg}</span>`); }
+
+function empty(id) { setBox(id, '<span class="placeholder">No results.</span>'); }
+
+async function apiFetch(url) {
+  const r = await fetch(url);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  return d;
+}
+
+function debounce(key, fn, ms=300) {
+  clearTimeout(_timers[key]);
+  _timers[key] = setTimeout(fn, ms);
+}
+
+function suggestCountry(inputId, boxId) {
+  const q = $id(inputId).value.trim();
+  const box = $id(boxId);
+  if (q.length < 3) { setBox(boxId, '<span class="placeholder">Type 3+ chars…</span>'); return; }
+  const hits = COUNTRIES.filter(c => c.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
+  if (!hits.length) { setBox(boxId, '<span class="placeholder">No matching countries.</span>'); return; }
+  box.innerHTML = hits.map(c =>
+    `<div class="item clickable" onclick="pickCountry('${inputId}','${boxId}','${c}')">`+
+      `<span class="item-name">${c}</span>`+
+    `</div>`
+  ).join('');
+}
+
+function pickCountry(inputId, boxId, value) {
+  $id(inputId).value = value;
+  setBox(boxId, '<span class="placeholder">Selected: ' + value + '</span>');
+}
+
+function suggestGenre(inputId, boxId) {
+  const q = $id(inputId).value.trim();
+  if (q.length < 3) { setBox(boxId, '<span class="placeholder">Type 3+ chars…</span>'); return; }
+  const hits = GENRES.filter(g => g.toLowerCase().includes(q.toLowerCase())).slice(0, 20);
+  if (!hits.length) { setBox(boxId, '<span class="placeholder">No matching genres.</span>'); return; }
+  $id(boxId).innerHTML = hits.map(g =>
+    `<div class="item clickable" onclick="pickGenre('${inputId}','${boxId}','${g}')">`+
+      `<span class="item-name">${g}</span>`+
+    `</div>`
+  ).join('');
+}
+
+function pickGenre(inputId, boxId, value) {
+  $id(inputId).value = value;
+  setBox(boxId, '<span class="placeholder">Selected: ' + value + '</span>');
+}
+
+function liveSearch(prefix, type) {
+  debounce('live_'+prefix, () => _liveSearch(prefix, type));
+}
+
+async function _liveSearch(prefix, type) {
+  const q = $id(prefix+'-q').value.trim();
+  const sug = prefix+'-sug';
+  if (q.length < 4) { setBox(sug, '<span class="placeholder">Type 4+ chars…</span>'); return; }
+  loading(sug);
+  try {
+    const endpoint = type === 'artist' ? 'artists' : type === 'album' ? 'albums' : 'tracks';
+    const d = await apiFetch(`/api/search/${endpoint}/?q=${encodeURIComponent(q)}&page=1`);
+    if (!d.results || !d.results.length) { empty(sug); return; }
+    $id(sug).innerHTML = d.results.map(r => {
+      const sub = r.artist ? `by ${r.artist}` : (r.listeners ? fmtNum(r.listeners)+' listeners' : '');
+      return `<div class="item clickable" onclick="pickSearch('${prefix}-q','${sug}','${esc(r.name)}')">`+
+        `<div><div class="item-name">${r.name}</div>${sub?`<div class="item-sub">${sub}</div>`:''}</div>`+
+        `</div>`;
+    }).join('');
+  } catch(e) { err(sug, e.message); }
+}
+
+function pickSearch(inputId, boxId, value) {
+  $id(inputId).value = value;
+  setBox(boxId, '<span class="placeholder">Selected: ' + value + '</span>');
+}
+
+function esc(s) { return (s||'').replace(/'/g,"\\'"); }
+function fmtNum(n) { return Number(n).toLocaleString(); }
+
+function updatePager(prefix, page, totalPages) {
+  const pager = $id(prefix+'-pager');
+  if (!pager) return;
+  if (totalPages <= 1) { pager.style.display = 'none'; return; }
+  pager.style.display = 'flex';
+  $id(prefix+'-pageinfo').textContent = `Page ${page} of ${totalPages}`;
+  pager.querySelectorAll('button')[0].disabled = page <= 1;
+  pager.querySelectorAll('button')[1].disabled = page >= totalPages;
+}
+
+function pageStep(prefix, delta) {
+  const s = _state[prefix];
+  if (!s) return;
+  s.page = Math.max(1, Math.min(s.totalPages, s.page + delta));
+  $id(prefix+'-page').value = s.page;
+  if (prefix === 'ta') fetchTopArtists();
+  else if (prefix === 'tt') fetchTopTracks();
+  else if (prefix === 'sa') fetchSearch('sa','artist');
+  else if (prefix === 'sab') fetchSearch('sab','album');
+  else if (prefix === 'st') fetchSearch('st','track');
+  else if (prefix === 'ga') fetchGenreArtists();
+}
+
+async function fetchTopArtists() {
+  const country = $id('ta-country').value.trim();
+  const page    = parseInt($id('ta-page').value) || 1;
+  const out     = 'ta-out';
+  if (!country) { err(out, 'Country is required.'); return; }
+  loading(out);
+  try {
+    const d = await apiFetch(`/api/top-artists/?country=${encodeURIComponent(country)}&page=${page}`);
+    if (!d.artists.length) { empty(out); return; }
+    $id(out).innerHTML = d.artists.map(a =>
+      `<div class="item">`+
+        `<div><div class="item-name">${a.rank}. ${a.name}</div></div>`+
+        `<span class="item-right">${fmtNum(a.listeners)} listeners</span>`+
+      `</div>`
+    ).join('');
+    _state['ta'] = { page, totalPages: d.total_pages };
+    updatePager('ta', page, d.total_pages);
+  } catch(e) { err(out, e.message); }
+}
+
+async function fetchTopTracks() {
+  const country = $id('tt-country').value.trim();
+  const page    = parseInt($id('tt-page').value) || 1;
+  const out     = 'tt-out';
+  if (!country) { err(out, 'Country is required.'); return; }
+  loading(out);
+  try {
+    const d = await apiFetch(`/api/top-tracks/?country=${encodeURIComponent(country)}&page=${page}`);
+    if (!d.tracks.length) { empty(out); return; }
+    $id(out).innerHTML = d.tracks.map((t,i) =>
+      `<div class="item">`+
+        `<div><div class="item-name">${i+1+(page-1)*20}. ${t.name}</div><div class="item-sub">by ${t.artist||'—'}</div></div>`+
+        `<span class="item-right">${fmtNum(t.listeners)} listeners</span>`+
+      `</div>`
+    ).join('');
+    _state['tt'] = { page, totalPages: d.total_pages };
+    updatePager('tt', page, d.total_pages);
+  } catch(e) { err(out, e.message); }
+}
+
+async function fetchSearch(prefix, type) {
+  const q    = $id(prefix+'-q').value.trim();
+  const page = parseInt($id(prefix+'-page').value) || 1;
+  const out  = prefix+'-out';
+  if (q.length < 4) { err(out, 'Query must be at least 4 characters.'); return; }
+  loading(out);
+  try {
+    const endpoint = type === 'artist' ? 'artists' : type === 'album' ? 'albums' : 'tracks';
+    const d = await apiFetch(`/api/search/${endpoint}/?q=${encodeURIComponent(q)}&page=${page}`);
+    if (!d.results || !d.results.length) { empty(out); return; }
+    const totalPages = Math.ceil(d.total / 20) || 1;
+    $id(out).innerHTML = d.results.map(r => {
+      const sub  = r.artist ? `by ${r.artist}` : '';
+      const info = r.listeners ? fmtNum(r.listeners)+' listeners' : '';
+      return `<div class="item">`+
+        `<div><div class="item-name">${r.name}</div>${sub?`<div class="item-sub">${sub}</div>`:''}</div>`+
+        `<span class="item-right">${info}</span>`+
+      `</div>`;
+    }).join('');
+    _state[prefix] = { page, totalPages };
+    updatePager(prefix, page, totalPages);
+  } catch(e) { err(out, e.message); }
+}
+
+async function fetchGenreArtists() {
+  const genre   = $id('ga-genre').value.trim();
+  const country = $id('ga-country').value.trim();
+  const page    = parseInt($id('ga-page').value) || 1;
+  const out     = 'ga-out';
+  if (!genre) { err(out, 'Genre is required.'); return; }
+  loading(out);
+  let url = `/api/genre-artists/?genre=${encodeURIComponent(genre)}&page=${page}`;
+  if (country) url += `&country=${encodeURIComponent(country)}`;
+  try {
+    const d = await apiFetch(url);
+    if (!d.artists.length) { empty(out); return; }
+    $id(out).innerHTML = d.artists.map(a =>
+      `<div class="item">`+
+        `<div class="item-name">${a.rank}. ${a.name}</div>`+
+        `${a.listeners ? '<span class="item-right">'+fmtNum(a.listeners)+' listeners</span>' : ''}`+
+      `</div>`
+    ).join('');
+    _state['ga'] = { page, totalPages: d.total_pages };
+    updatePager('ga', page, d.total_pages);
+  } catch(e) { err(out, e.message); }
+}
+</script>
+</body>
+</html>
